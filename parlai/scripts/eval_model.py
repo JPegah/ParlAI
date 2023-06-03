@@ -246,6 +246,64 @@ def _eval_single_world(opt, agent, task):
     world.reset()
     return report
 
+def eval_model_complex(opt):
+    """
+    Evaluates a generative model as a ranking model.
+
+    :param opt: tells the evaluation function how to run
+    :return: the final result of calling report()
+    """
+    random.seed(42)
+    if 'train' in opt['datatype'] and 'evalmode' not in opt['datatype']:
+        raise ValueError(
+            'You should use --datatype train:evalmode if you want to evaluate on '
+            'the training set.'
+        )
+
+    # load model and possibly print opt
+    opt['candidates'] = 'batch'
+    opt['eval_candidates'] = 'inline'
+    opt['fixed_candidates_path'] = False
+    opt['ignore_bad_candidates'] = False
+    opt['encode_candidate_vecs'] = True
+    opt['pegah_model'] = create_agent(opt, requireModelExists=True) # This is the generator model being loaded --> everything should be fine
+    opt['pegah_model'] .opt.log()
+    print('[Pegah] So Cool to be here! going to generate the second model -ranker')
+    opt['model_file'] = None
+    opt['model'] = 'gen2rank'
+    opt['cap_num_predictions'] = 20
+    agent = create_agent(opt) # This is the ranker agent (that has generator as one of its components) --> but it should have the same encoding
+
+
+    tb_logger, setting = prepare_tb_logger(opt)
+
+    if tb_logger:
+        n_parleys = get_n_parleys(opt)
+
+    tasks = opt['task'].split(',')
+    reports = []
+    for task in tasks:
+        task_report = _eval_single_world(opt, agent, task)
+        reports.append(task_report)
+        logging.report(f"Report for {task}:\n{nice_report(task_report)}")
+
+    report = aggregate_named_reports(
+        dict(zip(tasks, reports)), micro_average=opt.get('aggregate_micro', False)
+    )
+
+    # print announcements and report
+    print_announcements(opt)
+    logging.info(
+        f'Finished evaluating tasks {tasks} using datatype {opt.get("datatype")}'
+    )
+
+    print(nice_report(report))
+    _save_eval_stats(opt, report)
+    if tb_logger:
+        tb_logger.log_metrics(setting, n_parleys, report)
+        tb_logger.flush()
+    return report
+
 
 def eval_model(opt):
     """

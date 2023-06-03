@@ -786,7 +786,10 @@ class TorchAgent(ABC, Agent):
 
         if shared is None:
             # intialize any important structures from scratch
-            self.dict = self.build_dictionary()
+            if 'pegah_model' in opt.keys(): #TODO: This is sharing dictionary only
+                self.dict = opt['pegah_model'].dict
+            else:
+                self.dict = self.build_dictionary()
 
             if opt.get('fp16') or opt.get('force_fp16_tokens'):
                 # Volta cores revert to FP32 hardware if tensors are not multiples

@@ -683,7 +683,7 @@ class TorchGeneratorAgent(TorchAgent, ABC):
         kwargs['add_end'] = True  # we do want this
         return super().vectorize(*args, **kwargs)
 
-    def batchify(self, obs_batch, sort=False):
+    def batchify(self, obs_batch, sort=True): # TODO(Pegah): document this part
         batch = super().batchify(obs_batch, sort=sort)
         if (
             self.beam_block_full_context
@@ -874,7 +874,7 @@ class TorchGeneratorAgent(TorchAgent, ABC):
             AverageMetric.many([p.size(0) for p in preds], [1] * len(preds)),
         )
 
-    def rank_eval_label_candidates(self, batch, batchsize):
+    def rank_eval_label_candidates(self, batch, batchsize, sort=True):
         """
         Rank label_candidates during eval_step.
 
@@ -900,9 +900,13 @@ class TorchGeneratorAgent(TorchAgent, ABC):
             # check padding and such
             mask = (cands != self.NULL_IDX).float()
             cand_scores = (cand_losses * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)
-            sorted_scores, ordering = cand_scores.sort()
-            cand_choices.append([batch.candidates[i][o] for o in ordering])
-            cand_choices_scores.append(sorted_scores.tolist())
+            if sort:
+                sorted_scores, ordering = cand_scores.sort()
+                cand_choices.append([batch.candidates[i][o] for o in ordering])
+                cand_choices_scores.append(sorted_scores.tolist())
+            else:
+                cand_choices.append(batch.candidates[i])
+                cand_choices_scores.append(cand_scores.tolist())
 
         return cand_choices, cand_choices_scores
 

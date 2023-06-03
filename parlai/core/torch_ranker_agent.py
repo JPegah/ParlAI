@@ -195,6 +195,7 @@ class TorchRankerAgent(TorchAgent):
         else:
             # Note: we cannot change the type of metrics ahead of time, so you
             # should correctly initialize to floats or ints here
+            print('Initializing the ranking model from a shared model')
             self.criterion = self.build_criterion()
             self.model = self.build_model()
 
@@ -203,8 +204,13 @@ class TorchRankerAgent(TorchAgent):
                     'build_model() and build_criterion() need to return the model '
                     'or criterion'
                 )
-            train_params = trainable_parameters(self.model)
-            total_params = total_parameters(self.model)
+
+            m_arg = self.model
+            if opt['pegah_model']:
+                m_arg = self.model.gen_model
+
+            train_params = trainable_parameters(m_arg)
+            total_params = total_parameters(m_arg)
             logging.info(
                 f"Total parameters: {total_params:,d} ({train_params:,d} trainable)"
             )
